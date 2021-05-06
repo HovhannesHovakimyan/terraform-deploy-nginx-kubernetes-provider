@@ -1,32 +1,14 @@
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "2.57.0"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = ">= 2.1.0"
-    }
-  }
-}
+########################
+#     Resource map     #
+########################
+# - kubernetes deployment
+# - kubernetes service
 
-data "terraform_remote_state" "aks" {
-  backend = "local"
-
-  config = {
-    path = "../terraform-provision-aks-cluster/terraform.tfstate"
-  }
-}
-
-# Retrieve AKS cluster information
+########################
+#     Provider         #
+########################
 provider "azurerm" {
   features {}
-}
-
-data "azurerm_kubernetes_cluster" "cluster" {
-  name                = data.terraform_remote_state.aks.outputs.kubernetes_cluster_name
-  resource_group_name = data.terraform_remote_state.aks.outputs.resource_group_name
 }
 
 provider "kubernetes" {
@@ -37,6 +19,21 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(data.azurerm_kubernetes_cluster.cluster.kube_config.0.cluster_ca_certificate)
 }
 
+# Retrieve AKS cluster information
+data "terraform_remote_state" "aks" {
+  backend = "local"
+
+  config = {
+    path = "../terraform-provision-aks-cluster/terraform.tfstate"
+  }
+}
+
+data "azurerm_kubernetes_cluster" "cluster" {
+  name                = data.terraform_remote_state.aks.outputs.kubernetes_cluster_name
+  resource_group_name = data.terraform_remote_state.aks.outputs.resource_group_name
+}
+
+# Azure Kubernetes Deployment
 resource "kubernetes_deployment" "nginx" {
   metadata {
     name = var.kub_deploy_params.name
@@ -83,6 +80,7 @@ resource "kubernetes_deployment" "nginx" {
   }
 }
 
+# Azure Kubernetes Service
 resource "kubernetes_service" "nginx" {
   metadata {
     name = var.kub_service_params.name
